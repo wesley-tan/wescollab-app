@@ -1,6 +1,7 @@
-import { createSupabaseClient } from '@/lib/supabase'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { validateAndSyncUser } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -17,14 +18,40 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const supabase = createSupabaseClient()
+    const cookieStore = cookies()
+    
+    // Create Supabase client with access to request cookies
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            cookieStore.set({ name, value, ...options })
+          },
+          remove(name: string, options: CookieOptions) {
+            cookieStore.set({ name, value: '', ...options })
+          },
+        },
+      }
+    )
     
     try {
+      console.log('Attempting code exchange for:', code.substring(0, 10) + '...')
+      
       // Use the newer method for code exchange that handles PKCE automatically
       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
       if (exchangeError) {
         console.error('Code exchange error:', exchangeError)
+        console.error('Full error details:', JSON.stringify(exchangeError, null, 2))
+        
+        // Clear any stale auth state and redirect
+        await supabase.auth.signOut()
+        
         return NextResponse.redirect(
           `${requestUrl.origin}/auth/signin?error=exchange_failed&message=${encodeURIComponent(exchangeError.message)}`
         )

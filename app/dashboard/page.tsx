@@ -30,7 +30,7 @@ export default function DashboardPage() {
         // Get user data from our database
         const supabase = createSupabaseClient()
         const { data: dbUser, error: dbError } = await supabase
-          .from('User')
+          .from('profiles')
           .select('*')
           .eq('googleId', supabaseUser.id)
           .single()

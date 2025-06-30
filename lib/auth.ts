@@ -24,15 +24,18 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${baseUrl}/auth/callback`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
+        hd: 'wesleyan.edu', // Domain hint for Google
       },
+      skipBrowserRedirect: false,
     },
   })
 
   if (error) {
+    console.error('OAuth initiation error:', error)
     throw new Error(`Authentication failed: ${error.message}`)
   }
 
@@ -81,9 +84,9 @@ export async function validateAndSyncUser(user: any) {
   // Sync user data with our database using admin client
   const adminSupabase = createSupabaseAdminClient()
   
-  // Check if user exists in our users table
+  // Check if user exists in our profiles table
   const { data: existingUser, error: fetchError } = await adminSupabase
-    .from('User')
+    .from('profiles')
     .select('*')
     .eq('googleId', user.id)
     .single()
@@ -96,8 +99,9 @@ export async function validateAndSyncUser(user: any) {
   if (!existingUser) {
     // Create new user in our database
     const { data: newUser, error: createError } = await adminSupabase
-      .from('User')
+      .from('profiles')
       .insert({
+        id: user.id, // Use Supabase auth user ID
         email: user.email,
         name: user.user_metadata?.full_name || user.user_metadata?.name || null,
         image: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
@@ -116,11 +120,11 @@ export async function validateAndSyncUser(user: any) {
   } else {
     // Update existing user data
     const { data: updatedUser, error: updateError } = await adminSupabase
-      .from('User')
+      .from('profiles')
       .update({
         name: user.user_metadata?.full_name || user.user_metadata?.name || existingUser.name,
         image: user.user_metadata?.avatar_url || user.user_metadata?.picture || existingUser.image,
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', existingUser.id)
       .select()
@@ -144,7 +148,7 @@ export async function checkPostRateLimit(userId: string): Promise<boolean> {
   const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
   
   const { count, error } = await adminSupabase
-    .from('Post')
+    .from('posts')
     .select('*', { count: 'exact', head: true })
     .eq('userId', userId)
     .gte('createdAt', `${today}T00:00:00.000Z`)

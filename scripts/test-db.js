@@ -51,7 +51,7 @@ async function testSupabaseConnection() {
     
     // Test connection with a simple query
     const { data, error, count } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*', { count: 'exact', head: true });
     
     if (error) {
@@ -59,7 +59,7 @@ async function testSupabaseConnection() {
       console.log('   You may need to run `npx prisma db push` to create tables');
     } else {
       console.log('✅ Supabase connection successful!');
-      console.log(`✅ Users table accessible (${count || 0} records)`);
+      console.log(`✅ Profiles table accessible (${count || 0} records)`);
     }
     
     // Test posts table

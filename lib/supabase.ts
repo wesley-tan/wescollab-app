@@ -5,42 +5,42 @@ import { createBrowserClient } from '@supabase/ssr'
 export interface Database {
   public: {
     Tables: {
-      users: {
+      profiles: {
         Row: {
-          id: string
+          id: string // UUID from Supabase auth
           email: string
           name: string | null
           image: string | null
-          googleId: string
+          googleId: string | null
           role: string
-          createdAt: string
-          updatedAt: string
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          id?: string
+          id: string // Required - uses Supabase auth user ID (UUID)
           email: string
           name?: string | null
           image?: string | null
-          googleId: string
+          googleId?: string | null
           role?: string
-          createdAt?: string
-          updatedAt?: string
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           email?: string
           name?: string | null
           image?: string | null
-          googleId?: string
+          googleId?: string | null
           role?: string
-          createdAt?: string
-          updatedAt?: string
+          created_at?: string
+          updated_at?: string
         }
       }
       posts: {
         Row: {
-          id: string
-          userId: string
+          id: string // UUID
+          userId: string // UUID - references profiles.id
           roleTitle: string
           company: string
           roleType: 'INTERNSHIP' | 'FULL_TIME' | 'PART_TIME' | 'COLLABORATIVE_PROJECT' | 'VOLUNTEER' | 'RESEARCH'
@@ -52,8 +52,8 @@ export interface Database {
           updatedAt: string
         }
         Insert: {
-          id?: string
-          userId: string
+          id?: string // UUID
+          userId: string // UUID - references profiles.id
           roleTitle: string
           company: string
           roleType: 'INTERNSHIP' | 'FULL_TIME' | 'PART_TIME' | 'COLLABORATIVE_PROJECT' | 'VOLUNTEER' | 'RESEARCH'
@@ -65,8 +65,8 @@ export interface Database {
           updatedAt?: string
         }
         Update: {
-          id?: string
-          userId?: string
+          id?: string // UUID
+          userId?: string // UUID - references profiles.id
           roleTitle?: string
           company?: string
           roleType?: 'INTERNSHIP' | 'FULL_TIME' | 'PART_TIME' | 'COLLABORATIVE_PROJECT' | 'VOLUNTEER' | 'RESEARCH'
@@ -86,9 +86,22 @@ export interface Database {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
+// Singleton browser client to avoid multiple instances
+let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
+
 // Create client for client-side usage (browser)
 export const createSupabaseClient = () => {
-  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  if (typeof window === 'undefined') {
+    // Server-side: always create a new client
+    return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  }
+
+  // Browser-side: use singleton
+  if (!browserClient) {
+    browserClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  }
+  
+  return browserClient
 }
 
 // Create client for server-side usage

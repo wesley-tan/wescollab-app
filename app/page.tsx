@@ -24,17 +24,6 @@ export default function Home() {
                 Sign In with Google
               </a>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <a
-                  href="/dashboard"
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors"
-                >
-                  View Dashboard (Test)
-                </a>
-                <span className="text-sm text-muted-foreground">
-                  • Browse venture opportunities (coming soon)
-                </span>
-              </div>
             </div>
           </div>
           
