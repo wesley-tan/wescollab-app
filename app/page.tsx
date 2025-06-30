@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function Home() {
   return (
     <main className="container mx-auto px-4 py-8">
@@ -13,25 +15,30 @@ export default function Home() {
           <div className="bg-card border rounded-lg p-6 mb-8">
             <h2 className="text-2xl font-semibold mb-4">Get Started</h2>
             <p className="text-muted-foreground mb-6">
-              Sign in with your @wesleyan.edu account to create posts and connect with the community.
+              Browse opportunities from the Wesleyan community or sign in to create your own posts.
             </p>
             
-            <div className="space-y-4">
-              <a
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/opportunities"
+                className="px-6 py-3 bg-primary text-white rounded-md font-medium hover:bg-primary/90 transition-colors"
+              >
+                Browse Opportunities
+              </Link>
+              <Link
                 href="/auth/signin"
-                className="inline-block px-6 py-3 bg-primary text-white rounded-md font-medium hover:bg-primary/90 transition-colors"
+                className="px-6 py-3 border border-border rounded-md font-medium hover:bg-muted transition-colors"
               >
                 Sign In with Google
-              </a>
-              
+              </Link>
             </div>
           </div>
           
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">🧪 Testing Phase</h3>
-            <p className="text-sm text-blue-800">
-              WesCollab is currently in development. You can test the authentication system with your @wesleyan.edu account.
-              <br />Features being tested: Google OAuth, domain restriction, user database sync.
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-green-900 mb-2">✅ Ready to Use</h3>
+            <p className="text-sm text-green-800">
+              WesCollab is now live! Sign in with your @wesleyan.edu account to share opportunities with the community.
+              <br />All features are working: Authentication, posting, browsing, and profile management.
             </p>
           </div>
         </div>
