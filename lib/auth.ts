@@ -16,10 +16,15 @@ export function isAllowedEmail(email: string): boolean {
 export async function signInWithGoogle() {
   const supabase = createSupabaseClient()
   
+  // Get the correct base URL for redirects
+  const baseUrl = typeof window !== 'undefined' 
+    ? window.location.origin 
+    : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${baseUrl}/auth/callback`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
@@ -78,7 +83,7 @@ export async function validateAndSyncUser(user: any) {
   
   // Check if user exists in our users table
   const { data: existingUser, error: fetchError } = await adminSupabase
-    .from('users')
+    .from('User')
     .select('*')
     .eq('googleId', user.id)
     .single()
@@ -91,7 +96,7 @@ export async function validateAndSyncUser(user: any) {
   if (!existingUser) {
     // Create new user in our database
     const { data: newUser, error: createError } = await adminSupabase
-      .from('users')
+      .from('User')
       .insert({
         email: user.email,
         name: user.user_metadata?.full_name || user.user_metadata?.name || null,
@@ -111,7 +116,7 @@ export async function validateAndSyncUser(user: any) {
   } else {
     // Update existing user data
     const { data: updatedUser, error: updateError } = await adminSupabase
-      .from('users')
+      .from('User')
       .update({
         name: user.user_metadata?.full_name || user.user_metadata?.name || existingUser.name,
         image: user.user_metadata?.avatar_url || user.user_metadata?.picture || existingUser.image,
@@ -139,7 +144,7 @@ export async function checkPostRateLimit(userId: string): Promise<boolean> {
   const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
   
   const { count, error } = await adminSupabase
-    .from('posts')
+    .from('Post')
     .select('*', { count: 'exact', head: true })
     .eq('userId', userId)
     .gte('createdAt', `${today}T00:00:00.000Z`)

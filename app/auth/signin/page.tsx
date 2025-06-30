@@ -1,11 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signInWithGoogle } from '@/lib/auth'
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [urlError, setUrlError] = useState<string | null>(null)
+  const [urlMessage, setUrlMessage] = useState<string | null>(null)
+
+  // Handle URL parameters only on client side to avoid hydration issues
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const errorParam = urlParams.get('error')
+    const messageParam = urlParams.get('message')
+    
+    setUrlError(errorParam)
+    setUrlMessage(messageParam)
+  }, [])
 
   const handleGoogleSignIn = async () => {
     try {
@@ -22,11 +34,6 @@ export default function SignInPage() {
       setIsLoading(false)
     }
   }
-
-  // Check for error messages from URL parameters
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const urlError = urlParams?.get('error')
-  const urlMessage = urlParams?.get('message')
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -47,6 +54,7 @@ export default function SignInPage() {
                 {urlError === 'domain_restricted' && 'Only @wesleyan.edu email addresses are allowed.'}
                 {urlError === 'oauth_error' && 'OAuth authentication failed.'}
                 {urlError === 'auth_failed' && 'Authentication failed.'}
+                {urlError === 'exchange_failed' && 'Failed to exchange authorization code.'}
                 {urlMessage && <><br />{decodeURIComponent(urlMessage)}</>}
               </div>
             </div>

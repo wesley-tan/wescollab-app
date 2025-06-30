@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseClient()
     
     try {
-      // Exchange code for session
-      const { data: { user }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+      // Use the newer method for code exchange that handles PKCE automatically
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
       if (exchangeError) {
         console.error('Code exchange error:', exchangeError)
@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      if (user) {
+      if (data?.user) {
         try {
           // Validate domain and sync user with our database
-          await validateAndSyncUser(user)
+          await validateAndSyncUser(data.user)
           
           // Successful authentication - redirect to dashboard
           return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
@@ -45,6 +45,11 @@ export async function GET(request: NextRequest) {
             `${requestUrl.origin}/auth/signin?error=domain_restricted&message=${encodeURIComponent(validationError.message)}`
           )
         }
+      } else {
+        console.error('No user data returned from code exchange')
+        return NextResponse.redirect(
+          `${requestUrl.origin}/auth/signin?error=auth_failed&message=${encodeURIComponent('No user data received')}`
+        )
       }
     } catch (error: any) {
       console.error('Authentication callback error:', error)
@@ -55,5 +60,5 @@ export async function GET(request: NextRequest) {
   }
 
   // No code parameter - redirect to sign in
-  return NextResponse.redirect(`${requestUrl.origin}/auth/signin`)
+  return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=auth_failed&message=${encodeURIComponent('No authorization code received')}`)
 } 
