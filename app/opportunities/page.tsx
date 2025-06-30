@@ -15,7 +15,7 @@ interface Post {
   profiles: {
     name: string | null
     email: string
-  }
+  }[]
 }
 
 const roleTypeLabels = {
@@ -56,7 +56,7 @@ export default function OpportunitiesPage() {
             roleDesc,
             contactDetails,
             createdAt,
-            profiles (
+            profiles!inner (
               name,
               email
             )
@@ -193,7 +193,7 @@ export default function OpportunitiesPage() {
                 {/* Footer */}
                 <div className="border-t pt-4 mt-4">
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                    <span>Posted by {post.profiles?.name || 'Wesleyan Community'}</span>
+                    <span>Posted by {post.profiles?.[0]?.name || 'Wesleyan Community'}</span>
                     <span>{formatDate(post.createdAt)}</span>
                   </div>
                   
