@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserClient, createServerClient } from '@supabase/ssr'
 
 // Types for our database (from Prisma schema)
 export interface Database {
@@ -106,6 +106,30 @@ export const createSupabaseClient = () => {
 
 // Create client for server-side usage
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+
+// Create client for server-side usage with cookies (for API routes)
+export const createSupabaseServerClient = async () => {
+  const { cookies } = await import('next/headers')
+  const cookieStore = cookies()
+  
+  return createServerClient<Database>(
+    supabaseUrl,
+    supabaseAnonKey,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options })
+        },
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
+}
 
 // Create admin client with service role (for server-side admin operations)
 export const createSupabaseAdminClient = () => {

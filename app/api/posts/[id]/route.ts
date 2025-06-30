@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase'
-import { getCurrentUser } from '@/lib/auth'
+import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase'
 
 interface RouteParams {
   params: { id: string }
@@ -58,8 +57,10 @@ export async function PUT(
   { params }: RouteParams
 ) {
   try {
-    const user = await getCurrentUser()
-    if (!user) {
+    const supabaseServer = await createSupabaseServerClient()
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser()
+    
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -175,8 +176,10 @@ export async function DELETE(
   { params }: RouteParams
 ) {
   try {
-    const user = await getCurrentUser()
-    if (!user) {
+    const supabaseServer = await createSupabaseServerClient()
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser()
+    
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
