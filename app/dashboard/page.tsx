@@ -50,6 +50,31 @@ export default function DashboardPage() {
   const [userPosts, setUserPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  // Check for success messages from URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const success = urlParams.get('success')
+    
+    if (success === 'post-created') {
+      setSuccessMessage('Post created successfully!')
+    } else if (success === 'post-updated') {
+      setSuccessMessage('Post updated successfully!')
+    } else if (success === 'post-deleted') {
+      setSuccessMessage('Post deleted successfully!')
+    }
+
+    // Clear the URL parameter
+    if (success) {
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000)
+    }
+  }, [])
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -156,6 +181,40 @@ export default function DashboardPage() {
     }
   }
 
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+      return
+    }
+
+    setDeleting(postId)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        setError(errorData.error || 'Failed to delete post')
+        return
+      }
+
+      // Remove the post from local state
+      setUserPosts(prev => prev.filter(post => post.id !== postId))
+      setAllPosts(prev => prev.filter(post => post.id !== postId))
+      
+      setSuccessMessage('Post deleted successfully!')
+      setTimeout(() => setSuccessMessage(null), 5000)
+      
+    } catch (error: any) {
+      console.error('Delete post error:', error)
+      setError('An unexpected error occurred while deleting the post')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', { 
@@ -248,12 +307,37 @@ export default function DashboardPage() {
                     <h4 className="font-medium text-sm line-clamp-1">{post.roleTitle}</h4>
                     <p className="text-xs text-muted-foreground">{post.company}</p>
                     <p className="text-xs text-muted-foreground mt-1">{formatDate(post.createdAt)}</p>
+                    
+                    {/* Edit/Delete Actions */}
+                    <div className="flex gap-1 mt-2">
+                      <Link
+                        href={`/edit-post/${post.id}`}
+                        className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDeletePost(post.id)}
+                        disabled={deleting === post.id}
+                        className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deleting === post.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {userPosts.length > 3 && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    +{userPosts.length - 3} more posts
-                  </p>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      +{userPosts.length - 3} more posts
+                    </p>
+                    <Link
+                      href="/my-posts"
+                      className="text-xs text-primary hover:text-primary/80"
+                    >
+                      View All My Posts →
+                    </Link>
+                  </div>
                 )}
               </div>
             )}
@@ -268,6 +352,12 @@ export default function DashboardPage() {
                 className="block w-full px-3 py-2 bg-primary text-white text-sm text-center rounded hover:bg-primary/90"
               >
                 Create New Post
+              </Link>
+              <Link
+                href="/my-posts"
+                className="block w-full px-3 py-2 border border-gray-300 text-sm text-center rounded hover:bg-gray-50"
+              >
+                Manage My Posts
               </Link>
               <Link
                 href="/profile"
@@ -308,6 +398,12 @@ export default function DashboardPage() {
               Discover venture opportunities shared by the Wesleyan community
             </p>
           </div>
+
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
+              <p className="text-green-800">{successMessage}</p>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">

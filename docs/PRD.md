@@ -137,7 +137,6 @@ CREATE TABLE "posts" (
 ### **Phase 3 - Enhancement Features**
 - Search and filtering by role type, company
 - Rate limiting implementation
-- Admin dashboard
 - Enhanced UI/UX polish
 
 ## 8. Technical Architecture (Current)
