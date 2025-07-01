@@ -28,38 +28,6 @@ A community-driven venture board platform where Wesleyan University students, al
 - **Rate limiting** to prevent spam (10 posts/day per user)
 - **GDPR-compliant** data handling
 
-## 🚀 Live Demo
-
-**Dashboard**: Browse opportunities and manage posts  
-**Public Board**: View all opportunities (no login required)  
-**Create Post**: Share ventures with the community
-
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, Supabase
-- **Database**: PostgreSQL (Supabase)
-- **Authentication**: Supabase Auth + Google OAuth 2.0
-- **Deployment**: Vercel
-- **Styling**: Tailwind CSS + Custom UI Components
-
-## 📋 Environment Variables
-
-Create a `.env.local` file with the following variables:
-
-```env
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Database
-DATABASE_URL=postgresql://postgres:[password]@db.your-project.supabase.co:5432/postgres
-
-# App Configuration  
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-ALLOWED_DOMAIN=@wesleyan.edu
-```
 
 ## 🏃‍♂️ Quick Start
 
@@ -92,49 +60,6 @@ npm run dev
 
 Visit [http://localhost:3000](http://localhost:3000) to see the application.
 
-## 🗄️ Database Schema
-
-The application uses a PostgreSQL database with the following main tables:
-
-### **Profiles Table**
-```sql
-CREATE TABLE "profiles" (
-  "id" uuid PRIMARY KEY,              -- Supabase auth user ID
-  "email" text UNIQUE NOT NULL,
-  "name" text,
-  "image" text,
-  "googleId" text UNIQUE,
-  "role" text DEFAULT 'USER',
-  "created_at" timestamptz DEFAULT NOW(),
-  "updated_at" timestamptz DEFAULT NOW()
-);
-```
-
-### **Posts Table**
-```sql
-CREATE TABLE "posts" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  "userId" uuid NOT NULL REFERENCES "profiles"("id"),
-  "roleTitle" VARCHAR(200) NOT NULL,
-  "company" TEXT NOT NULL,
-  "roleType" "RoleType" NOT NULL,
-  "roleDesc" VARCHAR(2000) NOT NULL,
-  "contactDetails" TEXT NOT NULL,
-  "isDeleted" BOOLEAN DEFAULT false,
-  "deletedAt" TIMESTAMP WITH TIME ZONE,
-  "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-### **Role Types**
-```sql
-CREATE TYPE "RoleType" AS ENUM (
-  'INTERNSHIP', 'FULL_TIME', 'PART_TIME', 
-  'COLLABORATIVE_PROJECT', 'VOLUNTEER', 'RESEARCH'
-);
-```
-
 ## 🔧 Configuration
 
 ### Google OAuth Setup
@@ -162,33 +87,30 @@ CREATE TYPE "RoleType" AS ENUM (
    - Set site URL to your domain
    - Add redirect URLs for production
 
-## 🚢 Deployment
 
-### Vercel Deployment
+## 🛠️ Tech Stack
 
-1. **Connect GitHub Repository**:
-   - Import `wesley-tan/wescollab-app` from GitHub
-   - Choose main branch
+- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Supabase
+- **Database**: PostgreSQL (Supabase)
+- **Authentication**: Supabase Auth + Google OAuth 2.0
+- **Deployment**: Vercel
+- **Styling**: Tailwind CSS + Custom UI Components
 
-2. **Framework Configuration**:
-   - **Framework Preset**: Next.js
-   - **Root Directory**: `./`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: (Next.js default)
-   - **Install Command**: `npm install`
+## 📋 Environment Variables
 
-3. **Environment Variables**:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   DATABASE_URL=postgresql://postgres:[password]@db.your-project.supabase.co:5432/postgres
-   NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-   ALLOWED_DOMAIN=@wesleyan.edu
-   ```
+Create a `.env.local` file with the following variables:
 
-4. **Production Updates**:
-   - Update Google OAuth redirect URLs
-   - Update Supabase site URL and redirect URLs
-   - Test authentication flow
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
+# Database
+DATABASE_URL=postgresql://postgres:[password]@db.your-project.supabase.co:5432/postgres
+
+# App Configuration  
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+ALLOWED_DOMAIN=@wesleyan.edu
+```
