@@ -1,21 +1,11 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { validateAndSyncUser } from '@/lib/auth'
-import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
+import { validateAndSyncUser } from '@/lib/auth'
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const error = requestUrl.searchParams.get('error')
-  const error_description = requestUrl.searchParams.get('error_description')
-
-  // Handle OAuth errors
-  if (error) {
-    console.error('OAuth error:', error, error_description)
-    return NextResponse.redirect(
-      `${requestUrl.origin}/auth/signin?error=oauth_error&message=${encodeURIComponent(error_description || error)}`
-    )
-  }
 
   if (code) {
     const cookieStore = cookies()
@@ -38,54 +28,32 @@ export async function GET(request: NextRequest) {
         },
       }
     )
-    
+
     try {
-      console.log('Attempting code exchange for:', code.substring(0, 10) + '...')
+      const { data: { user }, error: authError } = await supabase.auth.exchangeCodeForSession(code)
       
-      // Use the newer method for code exchange that handles PKCE automatically
-      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-
-      if (exchangeError) {
-        console.error('Code exchange error:', exchangeError)
-        console.error('Full error details:', JSON.stringify(exchangeError, null, 2))
-        
-        // Clear any stale auth state and redirect
-        await supabase.auth.signOut()
-        
+      if (authError) throw authError
+      
+      if (!user?.email) {
         return NextResponse.redirect(
-          `${requestUrl.origin}/auth/signin?error=exchange_failed&message=${encodeURIComponent(exchangeError.message)}`
+          `${requestUrl.origin}/auth/signin?error=no_email&message=${encodeURIComponent('Email is required for authentication.')}`
         )
       }
 
-      if (data?.user) {
-        try {
-          // Validate domain and sync user with our database
-          await validateAndSyncUser(data.user)
-          
-          // Successful authentication - redirect to dashboard
-          return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
-        } catch (validationError: any) {
-          console.error('User validation error:', validationError)
-          
-          // Domain restriction failed - redirect with error
-          return NextResponse.redirect(
-            `${requestUrl.origin}/auth/signin?error=domain_restricted&message=${encodeURIComponent(validationError.message)}`
-          )
-        }
-      } else {
-        console.error('No user data returned from code exchange')
-        return NextResponse.redirect(
-          `${requestUrl.origin}/auth/signin?error=auth_failed&message=${encodeURIComponent('No user data received')}`
-        )
-      }
+      // Validate and sync user data
+      await validateAndSyncUser(user)
+      
+      // Redirect to dashboard after successful authentication
+      return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
     } catch (error: any) {
-      console.error('Authentication callback error:', error)
+      console.error('Auth callback error:', error)
+      
       return NextResponse.redirect(
-        `${requestUrl.origin}/auth/signin?error=auth_failed&message=${encodeURIComponent(error.message || 'Authentication failed')}`
+        `${requestUrl.origin}/auth/signin?error=auth_error&message=${encodeURIComponent('Authentication failed. Please try again.')}`
       )
     }
   }
 
-  // No code parameter - redirect to sign in
-  return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=auth_failed&message=${encodeURIComponent('No authorization code received')}`)
+  // Return the user to the homepage if something goes wrong
+  return NextResponse.redirect(requestUrl.origin)
 } 

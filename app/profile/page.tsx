@@ -210,15 +210,20 @@ export default function ProfilePage() {
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center space-x-4">
               {/* Avatar */}
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
                 {profile.image ? (
                   <img 
                     src={profile.image} 
                     alt={profile.name || 'Profile'} 
-                    className="w-16 h-16 rounded-full object-cover"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // If image fails to load, show fallback
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement?.querySelector('.fallback')?.classList.remove('hidden');
+                    }}
                   />
                 ) : (
-                  <span className="text-2xl font-semibold text-primary">
+                  <span className="text-2xl font-semibold text-primary fallback">
                     {(profile.name || profile.email)[0].toUpperCase()}
                   </span>
                 )}
@@ -313,7 +318,7 @@ export default function ProfilePage() {
                   <h3 className="text-sm font-medium text-foreground mb-1">Email</h3>
                   <p className="text-muted-foreground">{profile.email}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Verified Wesleyan email (cannot be changed)
+                    Your account email (cannot be changed)
                   </p>
                 </div>
 

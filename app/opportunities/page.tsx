@@ -1,22 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createSupabaseClient } from '@/lib/supabase'
 import Link from 'next/link'
-
-interface Post {
-  id: string
-  roleTitle: string
-  company: string
-  roleType: 'INTERNSHIP' | 'FULL_TIME' | 'PART_TIME' | 'COLLABORATIVE_PROJECT' | 'VOLUNTEER' | 'RESEARCH'
-  roleDesc: string
-  contactDetails: string
-  createdAt: string
-  profiles: {
-    name: string | null
-    email: string
-  }[]
-}
+import { EnhancedPostCard } from '@/app/_components/posts/enhanced-post-card'
+import { Post } from '@/types/post'
+import { useRouter, useSearchParams } from 'next/navigation'
+import debounce from 'lodash/debounce'
 
 const roleTypeLabels = {
   'INTERNSHIP': 'Internship',
@@ -27,71 +17,102 @@ const roleTypeLabels = {
   'RESEARCH': 'Research'
 }
 
-const roleTypeColors = {
-  'INTERNSHIP': 'bg-blue-100 text-blue-800',
-  'FULL_TIME': 'bg-green-100 text-green-800',
-  'PART_TIME': 'bg-yellow-100 text-yellow-800',
-  'COLLABORATIVE_PROJECT': 'bg-purple-100 text-purple-800',
-  'VOLUNTEER': 'bg-pink-100 text-pink-800',
-  'RESEARCH': 'bg-indigo-100 text-indigo-800'
-}
-
 export default function OpportunitiesPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState(searchParams.get('search') || '')
+  const [roleTypeFilter, setRoleTypeFilter] = useState(searchParams.get('roleType') || 'all')
+  const [pagination, setPagination] = useState({
+    page: 1,
+    total: 0,
+    hasMore: false
+  })
 
-  useEffect(() => {
-    const fetchPosts = async () => {
+  // Create a debounced version of the fetch function
+  const debouncedFetch = useCallback(
+    debounce(async (searchTerm: string, roleType: string) => {
       try {
-        const supabase = createSupabaseClient()
+        setLoading(true)
         
-        const { data, error: fetchError } = await supabase
-          .from('posts')
-          .select(`
-            id,
-            roleTitle,
-            company,
-            roleType,
-            roleDesc,
-            contactDetails,
-            createdAt,
-            profiles!inner (
-              name,
-              email
-            )
-          `)
-          .eq('isDeleted', false)
-          .order('createdAt', { ascending: false })
-
-        if (fetchError) {
-          console.error('Error fetching posts:', fetchError)
-          setError('Failed to load opportunities')
-          return
+        // Update URL without page reload
+        const params = new URLSearchParams()
+        if (searchTerm) params.set('search', searchTerm)
+        if (roleType !== 'all') params.set('roleType', roleType)
+        const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`
+        window.history.pushState({}, '', newUrl)
+        
+        // Use our enhanced API endpoint with search and filtering
+        const apiParams = new URLSearchParams({
+          page: '1',
+          limit: '20'
+        })
+        
+        if (searchTerm.trim()) {
+          apiParams.set('search', searchTerm.trim())
+        }
+        
+        if (roleType !== 'all') {
+          apiParams.set('roleType', roleType)
         }
 
-        setPosts(data || [])
+        const response = await fetch(`/api/posts?${apiParams}`)
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch posts')
+        }
+        
+        const data = await response.json()
+        
+        setPosts(data.posts || [])
+        setPagination({
+          page: data.pagination?.page || 1,
+          total: data.pagination?.total || 0,
+          hasMore: data.pagination?.hasMore || false
+        })
+        
       } catch (error) {
         console.error('Fetch posts error:', error)
         setError('Failed to load opportunities')
       } finally {
         setLoading(false)
       }
+    }, 300), // 300ms delay
+    [] // Empty dependency array since we don't want to recreate the debounced function
+  )
+
+  // Effect to handle search and filter changes
+  useEffect(() => {
+    debouncedFetch(search, roleTypeFilter)
+    
+    // Cleanup function to cancel pending debounced calls
+    return () => {
+      debouncedFetch.cancel()
     }
+  }, [search, roleTypeFilter, debouncedFetch])
 
-    fetchPosts()
-  }, [])
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    })
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value)
   }
 
-  if (loading) {
+  // Handle role type filter change
+  const handleRoleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRoleTypeFilter(e.target.value)
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearch('')
+    setRoleTypeFilter('all')
+    // Update URL without page reload
+    window.history.pushState({}, '', window.location.pathname)
+  }
+
+  if (loading && posts.length === 0) {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-6xl mx-auto pt-8 px-4">
@@ -126,11 +147,56 @@ export default function OpportunitiesPage() {
             </Link>
           </div>
           
+          {/* Search and Filters */}
+          <div className="mt-6 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Search opportunities..."
+                  value={search}
+                  onChange={handleSearchChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+              
+              {/* Role Type Filter */}
+              <div>
+                <select
+                  value={roleTypeFilter}
+                  onChange={handleRoleTypeChange}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="all">All Types</option>
+                  <option value="INTERNSHIP">Internships</option>
+                  <option value="FULL_TIME">Full-time</option>
+                  <option value="PART_TIME">Part-time</option>
+                  <option value="COLLABORATIVE_PROJECT">Projects</option>
+                  <option value="VOLUNTEER">Volunteer</option>
+                  <option value="RESEARCH">Research</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
           {/* Stats */}
           <div className="mt-6 p-4 bg-card border rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{posts.length}</span> opportunities available
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{pagination.total}</span> opportunities available
+                {search && <span> (filtered by "{search}")</span>}
+                {roleTypeFilter !== 'all' && <span> • {roleTypeLabels[roleTypeFilter as keyof typeof roleTypeLabels]} only</span>}
+              </p>
+              {(search || roleTypeFilter !== 'all') && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-red-600 hover:text-red-800 font-medium"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -157,8 +223,13 @@ export default function OpportunitiesPage() {
               </p>
               <Link
                 href="/auth/signin"
-                className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                className="
+                  inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg 
+                  hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                  transform hover:-translate-y-0.5 transition-all duration-200 shadow-lg hover:shadow-xl
+                "
               >
+                <span aria-hidden="true">✨</span>
                 Sign In to Post
               </Link>
             </div>
@@ -167,63 +238,41 @@ export default function OpportunitiesPage() {
 
         {/* Posts Grid */}
         {posts.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {posts.map((post) => (
-              <div key={post.id} className="bg-card border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-                {/* Header */}
-                <div className="mb-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-foreground line-clamp-2">
-                      {post.roleTitle}
-                    </h3>
-                    <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full flex-shrink-0 ${roleTypeColors[post.roleType]}`}>
-                      {roleTypeLabels[post.roleType]}
-                    </span>
-                  </div>
-                  <p className="text-primary font-medium">{post.company}</p>
+          <div className="space-y-6">
+            {/* Posts Grid */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {posts.map((post) => (
+                <div key={post.id} className="h-full">
+                  <EnhancedPostCard 
+                    post={post} 
+                    className="h-full hover:shadow-md transition-shadow duration-200"
+                  />
                 </div>
+              ))}
+            </div>
 
-                {/* Description */}
-                <div className="mb-4">
-                  <p className="text-muted-foreground text-sm line-clamp-3">
-                    {post.roleDesc}
-                  </p>
-                </div>
-
-                {/* Footer */}
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                    <span>Posted by {post.profiles?.[0]?.name || 'Wesleyan Community'}</span>
-                    <span>{formatDate(post.createdAt)}</span>
-                  </div>
-                  
-                  <div className="mt-3">
-                    <p className="text-xs text-muted-foreground mb-1">Contact:</p>
-                    <p className="text-sm text-foreground font-medium break-all">
-                      {post.contactDetails}
-                    </p>
-                  </div>
-                </div>
+            {/* Have an opportunity? */}
+            <div className="mt-12 text-center py-8 border-t">
+              <div className="max-w-md mx-auto">
+                <h3 className="text-lg font-medium text-foreground mb-2">
+                  Have an opportunity to share?
+                </h3>
+                <p className="text-muted-foreground mb-6">
+                  Join the community and help fellow Wesleyan students discover amazing opportunities.
+                </p>
+                <Link
+                  href="/auth/signin"
+                  className="
+                    inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg 
+                    hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                    transform hover:-translate-y-0.5 transition-all duration-200 shadow-lg hover:shadow-xl
+                  "
+                >
+                  <span aria-hidden="true">✨</span>
+                  Sign In to Post
+                </Link>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Call to Action */}
-        {posts.length > 0 && (
-          <div className="mt-12 text-center bg-card border rounded-lg p-8">
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              Have an opportunity to share?
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Join the community and help fellow Wesleyan students discover amazing opportunities.
-            </p>
-            <Link
-              href="/auth/signin"
-              className="inline-flex items-center px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            >
-              Sign In to Post
-            </Link>
+            </div>
           </div>
         )}
 

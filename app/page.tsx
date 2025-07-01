@@ -37,8 +37,7 @@ export default function Home() {
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-green-900 mb-2">✅ Ready to Use</h3>
             <p className="text-sm text-green-800">
-              WesCollab is now live! Sign in with your @wesleyan.edu account to share opportunities with the community.
-              <br />All features are working: Authentication, posting, browsing, and profile management.
+              WesCollab is now live! Sign in with your Google account to share opportunities with the community.
             </p>
           </div>
         </div>
