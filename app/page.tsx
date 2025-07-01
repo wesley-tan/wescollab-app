@@ -2,12 +2,12 @@ import Link from 'next/link'
 
 export default function Home() {
   return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-primary mb-4">WesCollab</h1>
+    <main className="container mx-auto px-4 min-h-screen flex flex-col items-center justify-center">
+      <div className="text-center max-w-3xl w-full -mt-24">
+        <h1 className="text-4xl font-bold text-primary mb-2">WesCollab</h1>
         <p className="text-xl text-muted-foreground mb-8">Wesleyan University Venture Board</p>
         
-        <div className="max-w-2xl mx-auto">
+        <div className="mb-8">
           <p className="text-lg mb-6">
             A community-driven platform where Wesleyan students, alumni, and partners can discover and share venture opportunities including internships, full-time roles, and collaborative projects.
           </p>
