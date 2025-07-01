@@ -84,50 +84,21 @@ export async function PUT(
     // Add the ID to the body for validation
     const bodyWithId = { ...body, id: params.id }
     
-    // Determine if this is legacy format or new format
-    const hasNewFields = 'contactEmail' in body || 'companyUrl' in body
+    // Validate only the fields that are present in the request
+    const partialSchema = editPostSchema.partial().required({ id: true })
+    const validation = partialSchema.safeParse(bodyWithId)
     
-    let validatedData: EditPostRequest | (LegacyCreatePostRequest & { id: string })
-    
-    if (hasNewFields) {
-      // Use new validation schema
-      const validation = editPostSchema.safeParse(bodyWithId)
-      
-      if (!validation.success) {
-        return NextResponse.json(
-          { 
-            error: 'Validation failed',
-            details: formatValidationErrors(validation.error)
-          },
-          { status: 400 }
-        )
-      }
-      
-      validatedData = validation.data
-    } else {
-      // Use legacy validation schema with ID added
-      const legacySchemaWithId = legacyCreatePostSchema.extend({
-        id: editPostSchema.shape.id
-      })
-      
-      const validation = legacySchemaWithId.safeParse(bodyWithId)
-      
-      if (!validation.success) {
-        return NextResponse.json(
-          { 
-            error: 'Validation failed',
-            details: formatValidationErrors(validation.error)
-          },
-          { status: 400 }
-        )
-      }
-      
-      // Transform legacy data to new format
-      validatedData = {
-        ...transformLegacyToNew(validation.data),
-        id: validation.data.id
-      } as EditPostRequest
+    if (!validation.success) {
+      return NextResponse.json(
+        { 
+          error: 'Validation failed',
+          details: formatValidationErrors(validation.error)
+        },
+        { status: 400 }
+      )
     }
+    
+    const validatedData = validation.data
 
     const supabase = createSupabaseAdminClient()
 
@@ -159,17 +130,9 @@ export async function PUT(
       )
     }
 
-    // Update the post
-    const updateData = {
-      roleTitle: validatedData.roleTitle,
-      company: validatedData.company,
-      companyUrl: (validatedData as EditPostRequest).companyUrl || null,
-      roleType: validatedData.roleType,
-      roleDesc: validatedData.roleDesc,
-      contactEmail: (validatedData as EditPostRequest).contactEmail || '',
-      contactPhone: (validatedData as EditPostRequest).contactPhone || null,
-      preferredContactMethod: (validatedData as EditPostRequest).preferredContactMethod || 'email',
-      contactDetails: (validatedData as EditPostRequest).contactDetails || '',
+    // Only update fields that were provided in the request
+    const { id, ...updateData } = {
+      ...validatedData,
       updatedAt: new Date().toISOString()
     }
 
@@ -208,9 +171,9 @@ export async function PUT(
 
     return NextResponse.json(updatedPost)
   } catch (error) {
-    console.error('Error updating post:', error)
+    console.error('Error in PUT /api/posts/[id]:', error)
     return NextResponse.json(
-      { error: 'Failed to update post' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

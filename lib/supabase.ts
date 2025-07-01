@@ -92,20 +92,48 @@ let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = nul
 // Create client for client-side usage (browser)
 export const createSupabaseClient = () => {
   if (typeof window === 'undefined') {
-    // Server-side: always create a new client
-    return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+    // Server-side: use the regular client
+    return supabase
   }
 
-  // Browser-side: use singleton
+  // Browser-side: use singleton with proper initialization
   if (!browserClient) {
-    browserClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+    browserClient = createBrowserClient<Database>(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        auth: {
+          persistSession: true,
+          storageKey: 'wescollab-supabase-auth',
+        },
+        global: {
+          headers: {
+            'x-client-info': 'wescollab-app',
+          },
+        },
+      }
+    )
   }
   
   return browserClient
 }
 
 // Create client for server-side usage
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      persistSession: true,
+      storageKey: 'wescollab-supabase-auth',
+    },
+    global: {
+      headers: {
+        'x-client-info': 'wescollab-app',
+      },
+    },
+  }
+)
 
 // Create client for server-side usage with cookies (for API routes)
 export const createSupabaseServerClient = async () => {
