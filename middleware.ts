@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Add security headers
+  // Add security headers with updated CSP for Next.js
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com;
@@ -90,7 +90,8 @@ export async function middleware(request: NextRequest) {
     frame-ancestors 'none';
     block-all-mixed-content;
     upgrade-insecure-requests;
-    connect-src 'self' https://*.supabase.co https://apis.google.com;
+    connect-src 'self' https://*.supabase.co https://apis.google.com https://accounts.google.com;
+    worker-src 'self' blob:;
   `.replace(/\s{2,}/g, ' ').trim()
 
   // Add security headers

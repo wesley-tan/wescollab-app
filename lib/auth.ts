@@ -15,18 +15,24 @@ export function isAllowedEmail(email: string): boolean {
 /**
  * Sign in with Google OAuth with domain restriction
  */
-export async function signInWithGoogle() {
+export async function signInWithGoogle(redirectTo?: string) {
   const supabase = createSupabaseClient()
   
   // Get the correct base URL for redirects
   const baseUrl = typeof window !== 'undefined' 
     ? window.location.origin 
     : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+  // Construct the callback URL with the redirect parameter
+  const callbackUrl = new URL('/auth/callback', baseUrl)
+  if (redirectTo) {
+    callbackUrl.searchParams.set('redirectTo', redirectTo)
+  }
   
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+      redirectTo: callbackUrl.toString(),
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',

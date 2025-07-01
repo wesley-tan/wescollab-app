@@ -6,6 +6,7 @@ import { validateAndSyncUser } from '@/lib/auth'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const redirectTo = requestUrl.searchParams.get('redirectTo') || '/dashboard'
 
   if (code) {
     const cookieStore = cookies()
@@ -43,8 +44,8 @@ export async function GET(request: Request) {
       // Validate and sync user data
       await validateAndSyncUser(user)
       
-      // Redirect to dashboard after successful authentication
-      return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
+      // Redirect to the specified redirect URL or dashboard
+      return NextResponse.redirect(`${requestUrl.origin}${redirectTo}`)
     } catch (error: any) {
       console.error('Auth callback error:', error)
       

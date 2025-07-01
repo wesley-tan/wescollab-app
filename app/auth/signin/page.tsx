@@ -2,30 +2,32 @@
 
 import { useState, useEffect } from 'react'
 import { signInWithGoogle } from '@/lib/auth'
+import { useSearchParams } from 'next/navigation'
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [urlError, setUrlError] = useState<string | null>(null)
   const [urlMessage, setUrlMessage] = useState<string | null>(null)
+  const searchParams = useSearchParams()
 
   // Handle URL parameters only on client side to avoid hydration issues
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const errorParam = urlParams.get('error')
-    const messageParam = urlParams.get('message')
+    const errorParam = searchParams.get('error')
+    const messageParam = searchParams.get('message')
     
     setUrlError(errorParam)
     setUrlMessage(messageParam)
-  }, [])
+  }, [searchParams])
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true)
       setError(null)
       
-      await signInWithGoogle()
-      // The redirect happens automatically in the signInWithGoogle function
+      // Get the redirect URL from the URL parameters or default to dashboard
+      const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+      await signInWithGoogle(redirectTo)
       
     } catch (error: any) {
       console.error('Sign in error:', error)
