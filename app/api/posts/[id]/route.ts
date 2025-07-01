@@ -84,50 +84,20 @@ export async function PUT(
     // Add the ID to the body for validation
     const bodyWithId = { ...body, id: params.id }
     
-    // Determine if this is legacy format or new format
-    const hasNewFields = 'contactEmail' in body || 'companyUrl' in body
+    // Validate using the edit schema
+    const validation = editPostSchema.safeParse(bodyWithId)
     
-    let validatedData: EditPostRequest | (LegacyCreatePostRequest & { id: string })
-    
-    if (hasNewFields) {
-      // Use new validation schema
-      const validation = editPostSchema.safeParse(bodyWithId)
-      
-      if (!validation.success) {
-        return NextResponse.json(
-          { 
-            error: 'Validation failed',
-            details: formatValidationErrors(validation.error)
-          },
-          { status: 400 }
-        )
-      }
-      
-      validatedData = validation.data
-    } else {
-      // Use legacy validation schema with ID added
-      const legacySchemaWithId = legacyCreatePostSchema.extend({
-        id: editPostSchema.shape.id
-      })
-      
-      const validation = legacySchemaWithId.safeParse(bodyWithId)
-      
-      if (!validation.success) {
-        return NextResponse.json(
-          { 
-            error: 'Validation failed',
-            details: formatValidationErrors(validation.error)
-          },
-          { status: 400 }
-        )
-      }
-      
-      // Transform legacy data to new format
-      validatedData = {
-        ...transformLegacyToNew(validation.data),
-        id: validation.data.id
-      } as EditPostRequest
+    if (!validation.success) {
+      return NextResponse.json(
+        { 
+          error: 'Validation failed',
+          details: formatValidationErrors(validation.error)
+        },
+        { status: 400 }
+      )
     }
+    
+    const validatedData = validation.data
 
     const supabase = createSupabaseAdminClient()
 
@@ -159,19 +129,17 @@ export async function PUT(
       )
     }
 
-    // Update the post
-    const updateData = {
-      roleTitle: validatedData.roleTitle,
-      company: validatedData.company,
-      companyUrl: (validatedData as EditPostRequest).companyUrl || null,
-      roleType: validatedData.roleType,
-      roleDesc: validatedData.roleDesc,
-      contactEmail: (validatedData as EditPostRequest).contactEmail || '',
-      contactPhone: (validatedData as EditPostRequest).contactPhone || null,
-      preferredContactMethod: (validatedData as EditPostRequest).preferredContactMethod || 'email',
-      contactDetails: (validatedData as EditPostRequest).contactDetails || '',
-      updatedAt: new Date().toISOString()
-    }
+    // Only include fields that were actually sent in the request
+    const updateData = Object.entries(validatedData)
+      .reduce((acc: any, [key, value]) => {
+        if (key !== 'id' && key in body) {
+          acc[key] = value
+        }
+        return acc
+      }, {})
+
+    // Add updatedAt timestamp
+    updateData.updatedAt = new Date().toISOString()
 
     const { data: updatedPost, error: updateError } = await supabase
       .from('posts')

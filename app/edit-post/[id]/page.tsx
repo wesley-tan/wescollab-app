@@ -107,15 +107,11 @@ export default function EditPostPage() {
     setError(null)
 
     try {
-      // Only include fields that have changed
+      // Only include fields that have changed and are not empty strings
       const changedFields = Object.entries(form).reduce((acc: any, [key, value]) => {
         if (post && post[key as keyof Post] !== value) {
-          // Handle empty strings appropriately
-          if (value === '') {
-            acc[key] = null;
-          } else {
-            acc[key] = value;
-          }
+          // Include the field if it has changed
+          acc[key] = value;
         }
         return acc;
       }, {});
@@ -139,8 +135,8 @@ export default function EditPostPage() {
         if (errorData.details) {
           // Format validation errors nicely
           const errorMessages = errorData.details
-            .map((detail: any) => detail.message)
-            .join(', ');
+            .map((detail: any) => `${detail.field}: ${detail.message}`)
+            .join('\n');
           setError(errorMessages);
         } else {
           setError(errorData.error || 'Failed to update post');
