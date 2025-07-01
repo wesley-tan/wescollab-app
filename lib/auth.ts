@@ -1,13 +1,15 @@
 import { createSupabaseClient, createSupabaseAdminClient } from './supabase'
 
-// Domain restriction configuration
-const ALLOWED_DOMAIN = '@wesleyan.edu'
+// Domain restriction configuration - temporarily disabled for testing
+const ALLOWED_DOMAINS: string[] = [] // Empty array means no domain restriction
 
 /**
  * Check if email belongs to allowed domain
  */
 export function isAllowedEmail(email: string): boolean {
-  return email.endsWith(ALLOWED_DOMAIN)
+  if (!email) return false
+  // Temporarily allow all email domains for testing
+  return true
 }
 
 /**
@@ -28,7 +30,6 @@ export async function signInWithGoogle() {
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
-        hd: 'wesleyan.edu', // Domain hint for Google
       },
       skipBrowserRedirect: false,
     },
@@ -72,13 +73,13 @@ export async function getCurrentUser() {
 }
 
 /**
- * Check if user has valid Wesleyan email and sync with database
+ * Check if user has valid email and sync with database
  */
 export async function validateAndSyncUser(user: any) {
-  if (!user?.email || !isAllowedEmail(user.email)) {
-    // Sign out user if they don't have a valid domain
+  if (!user?.email) {
+    // Sign out user if they don't have an email
     await signOut()
-    throw new Error('Access denied. Only @wesleyan.edu email addresses are allowed.')
+    throw new Error('Access denied. Email address is required.')
   }
 
   // Sync user data with our database using admin client

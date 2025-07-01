@@ -4,20 +4,8 @@ import { useState, useEffect } from 'react'
 import { getCurrentUser } from '@/lib/auth'
 import { createSupabaseClient } from '@/lib/supabase'
 import Link from 'next/link'
-
-interface Post {
-  id: string
-  roleTitle: string
-  company: string
-  roleType: 'INTERNSHIP' | 'FULL_TIME' | 'PART_TIME' | 'COLLABORATIVE_PROJECT' | 'VOLUNTEER' | 'RESEARCH'
-  roleDesc: string
-  contactDetails: string
-  createdAt: string
-  profiles: {
-    name: string | null
-    email: string
-  }[]
-}
+import { EnhancedPostCard } from '@/app/_components/posts/enhanced-post-card'
+import { Post } from '@/types/post'
 
 const roleTypeLabels = {
   'INTERNSHIP': 'Internship',
@@ -218,7 +206,7 @@ export default function MyPostsPage() {
             <div className="max-w-md mx-auto">
               <h3 className="text-lg font-medium text-foreground mb-2">No posts yet</h3>
               <p className="text-muted-foreground mb-6">
-                You haven't created any posts yet. Share your first opportunity with the Wesleyan community!
+                Share your first venture opportunity with the Wesleyan community!
               </p>
               <Link
                 href="/create-post"
@@ -229,55 +217,35 @@ export default function MyPostsPage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
-            {posts.map((post) => (
-              <div key={post.id} className="bg-card border rounded-lg p-6 shadow-sm">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-xl font-semibold text-foreground">
-                        {post.roleTitle}
-                      </h3>
-                      <span className={`ml-4 px-3 py-1 text-sm font-medium rounded-full ${roleTypeColors[post.roleType]}`}>
-                        {roleTypeLabels[post.roleType]}
-                      </span>
-                    </div>
-                    <p className="text-primary font-medium text-lg">{post.company}</p>
-                    <p className="text-sm text-muted-foreground">Posted {formatDate(post.createdAt)}</p>
+          <div className="grid gap-6">
+            {posts.map(post => (
+              <div key={post.id} className="relative bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
+                <div className="p-6">
+                  <EnhancedPostCard 
+                    post={post} 
+                    className="mb-4"
+                  />
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 justify-end border-t pt-4">
+                    <Link
+                      href={`/edit-post/${post.id}`}
+                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDeletePost(post.id)}
+                      disabled={deleting === post.id}
+                      className={`
+                        px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md
+                        hover:bg-red-700 transition-colors
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                      `}
+                    >
+                      {deleting === post.id ? 'Deleting...' : 'Delete'}
+                    </button>
                   </div>
-                </div>
-
-                {/* Description */}
-                <div className="mb-4">
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {post.roleDesc}
-                  </p>
-                </div>
-
-                {/* Contact Details */}
-                <div className="mb-4 p-3 bg-gray-50 rounded-md">
-                  <p className="text-xs text-muted-foreground mb-1">Contact:</p>
-                  <p className="text-sm text-foreground font-medium">
-                    {post.contactDetails}
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex justify-end gap-3">
-                  <Link
-                    href={`/edit-post/${post.id}`}
-                    className="px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 border border-blue-200"
-                  >
-                    Edit Post
-                  </Link>
-                  <button
-                    onClick={() => handleDeletePost(post.id)}
-                    disabled={deleting === post.id}
-                    className="px-4 py-2 text-sm bg-red-50 text-red-600 rounded-md hover:bg-red-100 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {deleting === post.id ? 'Deleting...' : 'Delete Post'}
-                  </button>
                 </div>
               </div>
             ))}

@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase'
+import { 
+  editPostSchema, 
+  legacyCreatePostSchema, 
+  formatValidationErrors,
+  transformLegacyToNew,
+  EditPostRequest,
+  LegacyCreatePostRequest 
+} from '@/lib/validation'
 
 interface RouteParams {
   params: { id: string }
@@ -20,8 +28,12 @@ export async function GET(
         userId,
         roleTitle,
         company,
+        companyUrl,
         roleType,
         roleDesc,
+        contactEmail,
+        contactPhone,
+        preferredContactMethod,
         contactDetails,
         createdAt,
         updatedAt,
@@ -68,29 +80,53 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { roleTitle, company, roleType, roleDesc, contactDetails } = body
-
-    // Validate required fields
-    if (!roleTitle?.trim() || !company?.trim() || !roleType || !roleDesc?.trim() || !contactDetails?.trim()) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
-        { status: 400 }
-      )
-    }
-
-    // Validate length limits
-    if (roleTitle.length > 200) {
-      return NextResponse.json(
-        { error: 'Role title must be 200 characters or less' },
-        { status: 400 }
-      )
-    }
-
-    if (roleDesc.length > 2000) {
-      return NextResponse.json(
-        { error: 'Role description must be 2000 characters or less' },
-        { status: 400 }
-      )
+    
+    // Add the ID to the body for validation
+    const bodyWithId = { ...body, id: params.id }
+    
+    // Determine if this is legacy format or new format
+    const hasNewFields = 'contactEmail' in body || 'companyUrl' in body
+    
+    let validatedData: EditPostRequest | (LegacyCreatePostRequest & { id: string })
+    
+    if (hasNewFields) {
+      // Use new validation schema
+      const validation = editPostSchema.safeParse(bodyWithId)
+      
+      if (!validation.success) {
+        return NextResponse.json(
+          { 
+            error: 'Validation failed',
+            details: formatValidationErrors(validation.error)
+          },
+          { status: 400 }
+        )
+      }
+      
+      validatedData = validation.data
+    } else {
+      // Use legacy validation schema with ID added
+      const legacySchemaWithId = legacyCreatePostSchema.extend({
+        id: editPostSchema.shape.id
+      })
+      
+      const validation = legacySchemaWithId.safeParse(bodyWithId)
+      
+      if (!validation.success) {
+        return NextResponse.json(
+          { 
+            error: 'Validation failed',
+            details: formatValidationErrors(validation.error)
+          },
+          { status: 400 }
+        )
+      }
+      
+      // Transform legacy data to new format
+      validatedData = {
+        ...transformLegacyToNew(validation.data),
+        id: validation.data.id
+      } as EditPostRequest
     }
 
     const supabase = createSupabaseAdminClient()
@@ -124,24 +160,34 @@ export async function PUT(
     }
 
     // Update the post
+    const updateData = {
+      roleTitle: validatedData.roleTitle,
+      company: validatedData.company,
+      companyUrl: (validatedData as EditPostRequest).companyUrl || null,
+      roleType: validatedData.roleType,
+      roleDesc: validatedData.roleDesc,
+      contactEmail: (validatedData as EditPostRequest).contactEmail || '',
+      contactPhone: (validatedData as EditPostRequest).contactPhone || null,
+      preferredContactMethod: (validatedData as EditPostRequest).preferredContactMethod || 'email',
+      contactDetails: (validatedData as EditPostRequest).contactDetails || '',
+      updatedAt: new Date().toISOString()
+    }
+
     const { data: updatedPost, error: updateError } = await supabase
       .from('posts')
-      .update({
-        roleTitle: roleTitle.trim(),
-        company: company.trim(),
-        roleType,
-        roleDesc: roleDesc.trim(),
-        contactDetails: contactDetails.trim(),
-        updatedAt: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select(`
         id,
         userId,
         roleTitle,
         company,
+        companyUrl,
         roleType,
         roleDesc,
+        contactEmail,
+        contactPhone,
+        preferredContactMethod,
         contactDetails,
         createdAt,
         updatedAt,

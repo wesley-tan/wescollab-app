@@ -5,26 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
 
-type RoleType = 'INTERNSHIP' | 'FULL_TIME' | 'PART_TIME' | 'COLLABORATIVE_PROJECT' | 'VOLUNTEER' | 'RESEARCH'
-
-interface EditPostForm {
-  roleTitle: string
-  company: string
-  roleType: RoleType
-  roleDesc: string
-  contactDetails: string
-}
-
-interface Post extends EditPostForm {
-  id: string
-  userId: string
-  createdAt: string
-  updatedAt: string
-  profiles: {
-    name: string | null
-    email: string
-  }[]
-}
+import { EditPostForm, Post, RoleType } from '@/types/post'
 
 export default function EditPostPage() {
   const router = useRouter()
@@ -40,8 +21,12 @@ export default function EditPostPage() {
   const [form, setForm] = useState<EditPostForm>({
     roleTitle: '',
     company: '',
+    companyUrl: '',
     roleType: 'INTERNSHIP',
     roleDesc: '',
+    contactEmail: '',
+    contactPhone: '',
+    preferredContactMethod: 'email',
     contactDetails: ''
   })
 
@@ -88,9 +73,13 @@ export default function EditPostPage() {
         setForm({
           roleTitle: postData.roleTitle,
           company: postData.company,
+          companyUrl: postData.companyUrl || '',
           roleType: postData.roleType,
           roleDesc: postData.roleDesc,
-          contactDetails: postData.contactDetails
+          contactEmail: postData.contactEmail || '',
+          contactPhone: postData.contactPhone || '',
+          preferredContactMethod: postData.preferredContactMethod || 'email',
+          contactDetails: postData.contactDetails || ''
         })
       } catch (error) {
         console.error('Auth/load error:', error)
@@ -117,10 +106,19 @@ export default function EditPostPage() {
     
     if (!form.company.trim()) return 'Company name is required'
     
+    if (form.companyUrl && !/^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=]*)$/.test(form.companyUrl)) {
+      return 'Please enter a valid company URL (e.g., https://company.com)'
+    }
+    
     if (!form.roleDesc.trim()) return 'Role description is required'
     if (form.roleDesc.length > 2000) return 'Role description must be 2000 characters or less'
     
-    if (!form.contactDetails.trim()) return 'Contact details are required'
+    if (!form.contactEmail || !form.contactEmail.trim()) return 'Contact email is required'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail)) return 'Please enter a valid email address'
+    
+    if (form.contactPhone && !/^[\+]?[\d\s\-\(\)\.]{7,}$/.test(form.contactPhone)) {
+      return 'Please enter a valid phone number (e.g., +1 (555) 123-4567)'
+    }
     
     return null
   }
@@ -146,8 +144,12 @@ export default function EditPostPage() {
         body: JSON.stringify({
           roleTitle: form.roleTitle.trim(),
           company: form.company.trim(),
+          companyUrl: form.companyUrl?.trim() || null,
           roleType: form.roleType,
           roleDesc: form.roleDesc.trim(),
+          contactEmail: form.contactEmail?.trim() || '',
+          contactPhone: form.contactPhone?.trim() || null,
+          preferredContactMethod: form.preferredContactMethod || 'email',
           contactDetails: form.contactDetails.trim()
         })
       })
@@ -228,10 +230,10 @@ export default function EditPostPage() {
                 name="roleTitle"
                 value={form.roleTitle}
                 onChange={handleChange}
-                placeholder="e.g., Product Manager Intern"
+                placeholder="e.g., Product Intern, Software Developer"
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                required
                 maxLength={200}
+                required
               />
               <p className="text-xs text-muted-foreground mt-1">
                 {form.roleTitle.length}/200 characters
@@ -241,7 +243,7 @@ export default function EditPostPage() {
             {/* Company */}
             <div>
               <label htmlFor="company" className="block text-sm font-medium text-foreground mb-2">
-                Company *
+                Company/Organization *
               </label>
               <input
                 type="text"
@@ -249,10 +251,29 @@ export default function EditPostPage() {
                 name="company"
                 value={form.company}
                 onChange={handleChange}
-                placeholder="Company or organization name"
+                placeholder="e.g., TechCorp, Wesleyan University"
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 required
               />
+            </div>
+
+            {/* Company URL */}
+            <div>
+              <label htmlFor="companyUrl" className="block text-sm font-medium text-foreground mb-2">
+                Company Website
+              </label>
+              <input
+                type="url"
+                id="companyUrl"
+                name="companyUrl"
+                value={form.companyUrl}
+                onChange={handleChange}
+                placeholder="https://company.com"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional: Add your company's website for more visibility
+              </p>
             </div>
 
             {/* Role Type */}
@@ -268,7 +289,7 @@ export default function EditPostPage() {
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 required
               >
-                {roleTypeOptions.map((option) => (
+                {roleTypeOptions.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -286,35 +307,93 @@ export default function EditPostPage() {
                 name="roleDesc"
                 value={form.roleDesc}
                 onChange={handleChange}
-                rows={6}
                 placeholder="Describe the role, responsibilities, requirements, and any other relevant details..."
+                rows={6}
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-vertical"
-                required
                 maxLength={2000}
+                required
               />
               <p className="text-xs text-muted-foreground mt-1">
                 {form.roleDesc.length}/2000 characters
               </p>
             </div>
 
-            {/* Contact Details */}
-            <div>
-              <label htmlFor="contactDetails" className="block text-sm font-medium text-foreground mb-2">
-                Contact Details *
-              </label>
-              <input
-                type="text"
-                id="contactDetails"
-                name="contactDetails"
-                value={form.contactDetails}
-                onChange={handleChange}
-                placeholder="Email, phone, or other contact information"
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                required
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                How should interested students contact you?
-              </p>
+            {/* Contact Information Section */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-medium text-foreground mb-4">Contact Information</h3>
+              
+              {/* Contact Email */}
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="contactEmail" className="block text-sm font-medium text-foreground mb-2">
+                    Contact Email *
+                  </label>
+                  <input
+                    type="email"
+                    id="contactEmail"
+                    name="contactEmail"
+                    value={form.contactEmail}
+                    onChange={handleChange}
+                    placeholder="your@email.com"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                {/* Contact Phone */}
+                <div>
+                  <label htmlFor="contactPhone" className="block text-sm font-medium text-foreground mb-2">
+                    Contact Phone
+                  </label>
+                  <input
+                    type="tel"
+                    id="contactPhone"
+                    name="contactPhone"
+                    value={form.contactPhone}
+                    onChange={handleChange}
+                    placeholder="+1 (555) 123-4567"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optional: Add a phone number for direct contact
+                  </p>
+                </div>
+
+                {/* Preferred Contact Method */}
+                <div>
+                  <label htmlFor="preferredContactMethod" className="block text-sm font-medium text-foreground mb-2">
+                    Preferred Contact Method *
+                  </label>
+                  <select
+                    id="preferredContactMethod"
+                    name="preferredContactMethod"
+                    value={form.preferredContactMethod}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                  >
+                    <option value="email">Email Only</option>
+                    <option value="phone">Phone Only</option>
+                    <option value="both">Both Email and Phone</option>
+                  </select>
+                </div>
+
+                {/* Additional Contact Details */}
+                <div>
+                  <label htmlFor="contactDetails" className="block text-sm font-medium text-foreground mb-2">
+                    Additional Contact Instructions
+                  </label>
+                  <textarea
+                    id="contactDetails"
+                    name="contactDetails"
+                    value={form.contactDetails}
+                    onChange={handleChange}
+                    placeholder="Add any specific instructions for contacting you (e.g., preferred contact hours, application process)..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-vertical"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Error Message */}
