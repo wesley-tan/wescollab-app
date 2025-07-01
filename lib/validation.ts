@@ -58,9 +58,57 @@ export const createPostSchema = z.object({
     .transform(val => val || "")
 })
 
-export const editPostSchema = createPostSchema.extend({
-  id: z.string().uuid("Invalid post ID")
-})
+export const editPostSchema = z.object({
+  id: z.string().uuid("Invalid post ID"),
+  roleTitle: z.string()
+    .min(1, "Role title is required")
+    .max(200, "Role title must be 200 characters or less")
+    .trim(),
+  
+  company: z.string()
+    .min(1, "Company name is required")
+    .max(100, "Company name must be 100 characters or less")
+    .trim(),
+  
+  companyUrl: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === '' ? undefined : val)
+    .refine((url) => !url || urlRegex.test(url), {
+      message: "Please enter a valid URL (e.g., https://company.com)"
+    }),
+  
+  roleType: roleTypeEnum,
+  
+  roleDesc: z.string()
+    .min(1, "Role description is required")
+    .max(2000, "Role description must be 2000 characters or less")
+    .trim(),
+  
+  contactEmail: z.string()
+    .min(1, "Contact email is required")
+    .email("Please enter a valid email address")
+    .trim()
+    .optional(),
+  
+  contactPhone: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === '' ? undefined : val)
+    .refine((phone) => !phone || phoneRegex.test(phone), {
+      message: "Please enter a valid phone number (e.g., +1 (555) 123-4567)"
+    }),
+  
+  preferredContactMethod: z.enum(['email', 'phone', 'both'])
+    .optional()
+    .default('email'),
+  
+  contactDetails: z.string()
+    .max(500, "Additional contact details must be 500 characters or less")
+    .optional()
+    .default("")
+    .transform(val => val || "")
+}).partial().required({ id: true })
 
 // Legacy schema for backward compatibility during migration
 export const legacyCreatePostSchema = z.object({
