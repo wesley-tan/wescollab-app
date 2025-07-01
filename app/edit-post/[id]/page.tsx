@@ -100,74 +100,62 @@ export default function EditPostPage() {
     setError(null)
   }
 
-  const validateForm = (): string | null => {
-    if (!form.roleTitle.trim()) return 'Role title is required'
-    if (form.roleTitle.length > 200) return 'Role title must be 200 characters or less'
-    
-    if (!form.company.trim()) return 'Company name is required'
-    
-    if (form.companyUrl && !/^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=]*)$/.test(form.companyUrl)) {
-      return 'Please enter a valid company URL (e.g., https://company.com)'
-    }
-    
-    if (!form.roleDesc.trim()) return 'Role description is required'
-    if (form.roleDesc.length > 2000) return 'Role description must be 2000 characters or less'
-    
-    if (!form.contactEmail || !form.contactEmail.trim()) return 'Contact email is required'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail)) return 'Please enter a valid email address'
-    
-    if (form.contactPhone && !/^[\+]?[\d\s\-\(\)\.]{7,}$/.test(form.contactPhone)) {
-      return 'Please enter a valid phone number (e.g., +1 (555) 123-4567)'
-    }
-    
-    return null
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    const validationError = validateForm()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-
     setSubmitting(true)
     setError(null)
 
     try {
+      // Only include fields that have changed
+      const changedFields = Object.entries(form).reduce((acc: any, [key, value]) => {
+        if (post && post[key as keyof Post] !== value) {
+          // Handle empty strings appropriately
+          if (value === '') {
+            acc[key] = null;
+          } else {
+            acc[key] = value;
+          }
+        }
+        return acc;
+      }, {});
+
+      // If no fields have changed, return early
+      if (Object.keys(changedFields).length === 0) {
+        router.push('/dashboard?success=no-changes');
+        return;
+      }
+
       const response = await fetch(`/api/posts/${postId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          roleTitle: form.roleTitle.trim(),
-          company: form.company.trim(),
-          companyUrl: form.companyUrl?.trim() || null,
-          roleType: form.roleType,
-          roleDesc: form.roleDesc.trim(),
-          contactEmail: form.contactEmail?.trim() || '',
-          contactPhone: form.contactPhone?.trim() || null,
-          preferredContactMethod: form.preferredContactMethod || 'email',
-          contactDetails: form.contactDetails.trim()
-        })
-      })
+        body: JSON.stringify(changedFields)
+      });
 
       if (!response.ok) {
-        const errorData = await response.json()
-        setError(errorData.error || 'Failed to update post')
-        return
+        const errorData = await response.json();
+        if (errorData.details) {
+          // Format validation errors nicely
+          const errorMessages = errorData.details
+            .map((detail: any) => detail.message)
+            .join(', ');
+          setError(errorMessages);
+        } else {
+          setError(errorData.error || 'Failed to update post');
+        }
+        return;
       }
 
       // Success! Redirect to dashboard
-      router.push('/dashboard?success=post-updated')
+      router.push('/dashboard?success=post-updated');
       
     } catch (error: any) {
-      console.error('Update post error:', error)
-      setError('An unexpected error occurred. Please try again.')
+      console.error('Update post error:', error);
+      setError('An unexpected error occurred. Please try again.');
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
