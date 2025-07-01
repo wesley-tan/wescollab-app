@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 // Types for our database (from Prisma schema)
 export interface Database {
@@ -108,6 +110,31 @@ export const createSupabaseClient = () => {
           flowType: 'pkce',
           detectSessionInUrl: true,
           autoRefreshToken: true,
+          storage: {
+            getItem: (key) => {
+              try {
+                const item = localStorage.getItem(key)
+                return item
+              } catch (error) {
+                console.error('Error reading from localStorage:', error)
+                return null
+              }
+            },
+            setItem: (key, value) => {
+              try {
+                localStorage.setItem(key, value)
+              } catch (error) {
+                console.error('Error writing to localStorage:', error)
+              }
+            },
+            removeItem: (key) => {
+              try {
+                localStorage.removeItem(key)
+              } catch (error) {
+                console.error('Error removing from localStorage:', error)
+              }
+            },
+          },
         },
         global: {
           headers: {
@@ -116,6 +143,17 @@ export const createSupabaseClient = () => {
         },
       }
     )
+
+    // Add auth state change listener after client creation
+    browserClient.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        const maxAge = 100 * 365 * 24 * 60 * 60 // 100 years
+        document.cookie = `wescollab-auth-token=${session?.access_token}; path=/; max-age=${maxAge}; SameSite=Lax`
+      }
+      if (event === 'SIGNED_OUT') {
+        document.cookie = 'wescollab-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+      }
+    })
   }
   
   return browserClient
@@ -123,7 +161,6 @@ export const createSupabaseClient = () => {
 
 // Create client for server-side usage with cookies (for API routes)
 export const createSupabaseServerClient = () => {
-  const { cookies } = require('next/headers')
   const cookieStore = cookies()
   
   return createServerClient<Database>(
@@ -131,32 +168,19 @@ export const createSupabaseServerClient = () => {
     supabaseAnonKey,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+        getAll() {
+          return cookieStore.getAll().map(({ name, value }) => ({ name, value }))
         },
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {
-            // Handle cookie setting errors gracefully
-            console.error('Error setting cookie:', error)
-          }
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (error) {
-            // Handle cookie removal errors gracefully
-            console.error('Error removing cookie:', error)
-          }
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+          })
         },
       },
-      auth: {
-        persistSession: true,
-        storageKey: 'wescollab-supabase-auth',
-        flowType: 'pkce',
-        detectSessionInUrl: true,
-        autoRefreshToken: true,
+      global: { fetch },
+      auth: { 
+        persistSession: true, 
+        storageKey: 'wescollab-supabase-auth'
       },
     }
   )

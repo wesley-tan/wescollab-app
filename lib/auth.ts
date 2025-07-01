@@ -22,26 +22,33 @@ export async function signInWithGoogle() {
   const baseUrl = typeof window !== 'undefined' 
     ? window.location.origin 
     : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${baseUrl}/auth/callback`,
-      queryParams: {
-        access_type: 'offline',
-        prompt: 'consent select_account',
-      },
-      skipBrowserRedirect: false,
-      flowType: 'pkce',
-    },
-  })
 
-  if (error) {
-    console.error('OAuth initiation error:', error)
+  try {
+    // Clear any existing auth state to ensure a fresh login
+    await supabase.auth.signOut()
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${baseUrl}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent select_account',
+        },
+        skipBrowserRedirect: false,
+      },
+    })
+
+    if (error) {
+      console.error('OAuth initiation error:', error)
+      throw new Error(`Authentication failed: ${error.message}`)
+    }
+
+    return data
+  } catch (error: any) {
+    console.error('Sign in error:', error)
     throw new Error(`Authentication failed: ${error.message}`)
   }
-
-  return data
 }
 
 /**
