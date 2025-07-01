@@ -73,8 +73,12 @@ export default function MyPostsPage() {
               id,
               roleTitle,
               company,
+              companyUrl,
               roleType,
               roleDesc,
+              contactEmail,
+              contactPhone,
+              preferredContactMethod,
               contactDetails,
               createdAt,
               profiles!inner (
@@ -201,56 +205,106 @@ export default function MyPostsPage() {
         )}
 
         {/* Posts List */}
-        {posts.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="max-w-md mx-auto">
-              <h3 className="text-lg font-medium text-foreground mb-2">No posts yet</h3>
+        <div className="space-y-6">
+          {posts.length === 0 ? (
+            <div className="text-center py-12 bg-card border rounded-lg">
+              <h3 className="text-lg font-medium text-foreground mb-2">No Posts Yet</h3>
               <p className="text-muted-foreground mb-6">
-                Share your first venture opportunity with the Wesleyan community!
+                Create your first venture opportunity post to get started.
               </p>
               <Link
                 href="/create-post"
-                className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
               >
-                Create Your First Post
+                Create New Post
               </Link>
             </div>
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {posts.map(post => (
-              <div key={post.id} className="relative bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
-                <div className="p-6">
-                  <EnhancedPostCard 
-                    post={post} 
-                    className="mb-4"
-                  />
+          ) : (
+            posts.map(post => (
+              <div key={post.id} className="bg-card border rounded-lg p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex-1">
+                    <h2 className="text-xl font-semibold text-foreground mb-2">
+                      {post.roleTitle}
+                    </h2>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-muted-foreground">{post.company}</span>
+                      {post.companyUrl && (
+                        <a 
+                          href={post.companyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary/80 text-sm"
+                        >
+                          Visit Website ↗
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${roleTypeColors[post.roleType]}`}>
+                        {roleTypeLabels[post.roleType]}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        Posted {formatDate(post.createdAt)}
+                      </span>
+                    </div>
+                  </div>
                   
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2 justify-end border-t pt-4">
+                  <div className="flex gap-2">
                     <Link
                       href={`/edit-post/${post.id}`}
-                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                     >
                       Edit
                     </Link>
                     <button
                       onClick={() => handleDeletePost(post.id)}
                       disabled={deleting === post.id}
-                      className={`
-                        px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md
-                        hover:bg-red-700 transition-colors
-                        disabled:opacity-50 disabled:cursor-not-allowed
-                      `}
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
                     >
                       {deleting === post.id ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
                 </div>
+
+                <div className="prose prose-sm max-w-none text-muted-foreground mb-4">
+                  {post.roleDesc}
+                </div>
+
+                {/* Contact Information - Only show if any contact details exist */}
+                {(post.contactEmail || post.contactPhone || post.contactDetails) && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <h3 className="text-sm font-medium text-foreground mb-2">Contact Information</h3>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      {post.contactEmail && (
+                        <div>
+                          <span className="font-medium">Email:</span> {post.contactEmail}
+                        </div>
+                      )}
+                      {post.contactPhone && (
+                        <div>
+                          <span className="font-medium">Phone:</span> {post.contactPhone}
+                        </div>
+                      )}
+                      {post.preferredContactMethod && post.preferredContactMethod !== 'email' && (
+                        <div>
+                          <span className="font-medium">Preferred Contact:</span> {' '}
+                          {post.preferredContactMethod === 'both' ? 'Email or Phone' : post.preferredContactMethod}
+                        </div>
+                      )}
+                      {post.contactDetails && (
+                        <div>
+                          <span className="font-medium">Additional Details:</span>
+                          <p className="mt-1">{post.contactDetails}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   )

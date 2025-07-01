@@ -92,8 +92,8 @@ let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = nul
 // Create client for client-side usage (browser)
 export const createSupabaseClient = () => {
   if (typeof window === 'undefined') {
-    // Server-side: use the regular client
-    return supabase
+    // Server-side: use the server client
+    return createSupabaseServerClient()
   }
 
   // Browser-side: use singleton with proper initialization
@@ -105,6 +105,9 @@ export const createSupabaseClient = () => {
         auth: {
           persistSession: true,
           storageKey: 'wescollab-supabase-auth',
+          flowType: 'pkce',
+          detectSessionInUrl: true,
+          autoRefreshToken: true,
         },
         global: {
           headers: {
@@ -118,26 +121,9 @@ export const createSupabaseClient = () => {
   return browserClient
 }
 
-// Create client for server-side usage
-export const supabase = createClient<Database>(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      persistSession: true,
-      storageKey: 'wescollab-supabase-auth',
-    },
-    global: {
-      headers: {
-        'x-client-info': 'wescollab-app',
-      },
-    },
-  }
-)
-
 // Create client for server-side usage with cookies (for API routes)
-export const createSupabaseServerClient = async () => {
-  const { cookies } = await import('next/headers')
+export const createSupabaseServerClient = () => {
+  const { cookies } = require('next/headers')
   const cookieStore = cookies()
   
   return createServerClient<Database>(
@@ -149,11 +135,28 @@ export const createSupabaseServerClient = async () => {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          cookieStore.set({ name, value, ...options })
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // Handle cookie setting errors gracefully
+            console.error('Error setting cookie:', error)
+          }
         },
         remove(name: string, options: any) {
-          cookieStore.set({ name, value: '', ...options })
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch (error) {
+            // Handle cookie removal errors gracefully
+            console.error('Error removing cookie:', error)
+          }
         },
+      },
+      auth: {
+        persistSession: true,
+        storageKey: 'wescollab-supabase-auth',
+        flowType: 'pkce',
+        detectSessionInUrl: true,
+        autoRefreshToken: true,
       },
     }
   )
